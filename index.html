@@ -66,6 +66,17 @@
                     <i class="fa-solid fa-file-arrow-down"></i>
                     Export PNG
                 </button>
+                <!-- Export JSON button -->
+                <button id="exportJSON" class="py-1 px-2 rounded hover:text-blue-600 print:hidden text-sm">
+                    <i class="fa-solid fa-download"></i>
+                    Export JSON
+                </button>
+                <!-- Import JSON button -->
+                <button id="importJSON" class="py-1 px-2 rounded hover:text-blue-600 print:hidden text-sm">
+                    <i class="fa-solid fa-upload"></i>
+                    Import JSON
+                </button>
+                <input type="file" id="jsonFileInput" accept=".json" class="hidden" />
                 <!-- Clear tasks button -->
                 <button id="deleteAll" class="py-1 px-2 rounded hover:text-red-600 print:hidden text-sm">
                     <i class="fa-solid fa-circle-exclamation"></i>
@@ -495,9 +506,72 @@
                 };
             }
 
+            // Export chart state as JSON
+            function exportStateAsJSON() {
+                const state = {
+                    chartTitle: chartTitleElement.value || "",
+                    tasks: tasks,
+                };
+                const json = JSON.stringify(state, null, 2);
+                const blob = new Blob([json], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "hillchart.json";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // Import chart state from JSON
+            function importStateFromJSON(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        const state = JSON.parse(e.target.result);
+                        if (!state.tasks || !Array.isArray(state.tasks)) {
+                            alert("Invalid JSON file: missing tasks array.");
+                            return;
+                        }
+
+                        // Update chart title
+                        chartTitleElement.value = state.chartTitle || "";
+                        updateChartTitle();
+
+                        // Recalculate y values and update tasks
+                        tasks = state.tasks.map((t) => ({
+                            ...t,
+                            x: Math.max(xMin, Math.min(xMax, t.x)),
+                            y: hillFn(Math.max(xMin, Math.min(xMax, t.x))),
+                        }));
+                        saveTasks();
+
+                        // Re-render chart
+                        svg.selectAll(".task").remove();
+                        renderTasksOnChart();
+                        renderTaskList();
+                    } catch (err) {
+                        alert("Failed to import JSON: " + err.message);
+                    }
+                };
+                reader.readAsText(file);
+
+                // Reset file input so the same file can be re-imported
+                event.target.value = "";
+            }
+
             // Event Listeners
             document.getElementById("addTask").addEventListener("click", addNewTask);
             document.getElementById("exportPNG").addEventListener("click", exportChartAsPNG);
+            document.getElementById("exportJSON").addEventListener("click", exportStateAsJSON);
+            document.getElementById("importJSON").addEventListener("click", () => {
+                document.getElementById("jsonFileInput").click();
+            });
+            document.getElementById("jsonFileInput").addEventListener("change", importStateFromJSON);
             document.getElementById("deleteAll").addEventListener("click", resetPage);
             document.getElementById("print").addEventListener("click", () => {
                 renderTasksOnChart();
