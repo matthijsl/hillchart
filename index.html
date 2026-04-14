@@ -76,7 +76,7 @@
                     <i class="fa-solid fa-upload"></i>
                     Import JSON
                 </button>
-                <input type="file" id="jsonFileInput" accept=".json" class="hidden" />
+                <input type="file" id="jsonFileInput" accept=".json" class="hidden" aria-label="Import hill chart JSON file" />
                 <!-- Clear tasks button -->
                 <button id="deleteAll" class="py-1 px-2 rounded hover:text-red-600 print:hidden text-sm">
                     <i class="fa-solid fa-circle-exclamation"></i>
@@ -534,7 +534,7 @@
                     try {
                         const state = JSON.parse(e.target.result);
                         if (!state.tasks || !Array.isArray(state.tasks)) {
-                            alert("Invalid JSON file: missing tasks array.");
+                            alert("Invalid JSON file: tasks must be an array.");
                             return;
                         }
 
@@ -543,11 +543,10 @@
                         updateChartTitle();
 
                         // Recalculate y values and update tasks
-                        tasks = state.tasks.map((t) => ({
-                            ...t,
-                            x: Math.max(xMin, Math.min(xMax, t.x)),
-                            y: hillFn(Math.max(xMin, Math.min(xMax, t.x))),
-                        }));
+                        tasks = state.tasks.map((t) => {
+                            const clampedX = Math.max(xMin, Math.min(xMax, t.x));
+                            return { ...t, x: clampedX, y: hillFn(clampedX) };
+                        });
                         saveTasks();
 
                         // Re-render chart
